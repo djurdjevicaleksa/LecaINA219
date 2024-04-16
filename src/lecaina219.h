@@ -81,24 +81,7 @@
 float BUS_VOLTAGES[2] = {16, 32};
 float GAIN[4] = {0.04, 0.08, 0.16, 0.32};
 
-
-
-typedef struct 
-{
-    uint8_t deviceAddress;
-    int fileDescriptor;
-
-    uint8_t voltageRange;
-    float shuntResistance;
-    float maxExpectedCurrent;
-    uint8_t gain;
-
-    float minimumCurrentLSB;
-    float currentLSB;
-    float powerLSB;
-    
-}LecaINA219;
-
+typedef struct ina LecaINA219;
 
 // Used to retrieve multiple readings from the sensor using inaGetData().
 typedef struct
@@ -114,20 +97,28 @@ typedef struct
 }DATAPACK;
 
 /*
-    Sets up I2C communication with the target device and stores parameters for sensor calibration.
+    Allocates memory for an instance of LecaINA219 struct with important parameters.
+
+    @param shuntResistance Resistance of the shunt resistor in ohms.
+    @param maxExpectedAmps Maximum current the sensor will measure. Lower current means the reading will be more precise.
+
+    @return Returns address of the dynamically allocated instance.
+*/
+LecaINA219* createINA(float shuntResistance, float maxExpectedAmps);
+
+/*
+    Sets up I2C communication with the target device.
 
     @param ina Instance of LecaINA219 struct.
     @param i2cAddress I2C address of the sensor. (default is 0x40)
     @param device_address Path to the device file. (ie. "/dev/i2c-1")
-    @param shuntResistance Resistance of the shunt resistor in Ohms.
-    @param maxExpectedAmps Maximum current in amperes the sensor will measure. Lower current means the readings will be more precise.
 
     @return Returns INA_SUCCESS or INA_FAILURE.
 */
-int ina219Init(LecaINA219* ina, uint8_t i2cAddress, const char* device_address, float shuntResistance, float maxExpectedAmps);
+int inaI2CInit(LecaINA219* ina, uint8_t i2cAddress, const char* device_address);
 
 /*
-    Terminates the communication with the sensor and closes its file descriptor.
+    Terminates the communication with the sensor, closes its file descriptor and frees memory occupied by struct instance.
 
     @param ina Instance of LecaINA219 struct.
 
@@ -151,40 +142,6 @@ int inaTerminate(LecaINA219* ina);
 int inaConfigure(LecaINA219* ina, uint8_t voltageRange, uint8_t gain, uint8_t badc, uint8_t sadc, uint8_t mode);
 
 /*
-    Calibrates the sensor. Used inside inaConfigure(). Should not be used by itself.
-
-    @param ina Instance of LecaINA219 struct.
-    @param maxBusVoltage Maximum voltage allowed on the bus.
-    @param maxShuntVoltage Voltage across the shunt resistor. 
-    @param maxExpectedAmps Maximum current in amperes the sensor will measure. Lower current means the readings will be more precise.
-
-    @return Returns INA_SUCCESS or INA_FAILURE.
-*/
-int inaCalibrate(LecaINA219* ina, uint8_t maxBusVoltage, float maxShuntVoltage, float maxExpectedAmps);
-
-/*
-    Helper function to calculate currentLSB to balance precision and current range. Should not be used by itself.
-
-    @param ina Instance of LecaINA219 struct.
-    @param maxExpectedAmps Maximum current in amperes the sensor will measure. Lower current means the readings will be more precise.
-    @param maxPossibleAmps Maximum current in amperes the sensor will be able to withstand before causing damage. Internally calculated.
-
-    @return Returns the value for the currentLSB.
-*/
-float inaCalculateCurrentLSB(LecaINA219* ina, float maxExpectedAmps, float maxPossibleAmps);
-
-
-/*
-    Reads the current register. Data inside isn't processed and therefore is unimportant to the user.
-
-    @param ina Instance of LecaINA219 struct.
-    @param destination Address where the result will be stored.
-
-    @return Returns INA_SUCCESS or INA_FAILURE.
-*/
-int inaReadCurrentRegister(LecaINA219* ina, uint16_t* destination);
-
-/*
     Reads the current register and calculates current in amperes.
 
     @param ina Instance of LecaINA219 struct.
@@ -203,16 +160,6 @@ int inaReadCurrent_A(LecaINA219* ina, float* destination);
     @return Returns INA_SUCCESS or INA_FAILURE.
 */
 int inaReadCurrent_mA(LecaINA219* ina, float* destination);
-
-/*
-    Reads the bus voltage register. Data inside isn't processed and therefore is unimportant to the user.
-
-    @param ina Instance of LecaINA219 struct.
-    @param destination Address where the result will be stored.
-
-    @return Returns INA_SUCCESS or INA_FAILURE. 
-*/
-int inaReadBusVoltageRegister(LecaINA219* ina, uint16_t* destination);
 
 /*
     Reads the bus voltage register and calculates voltage in volts.
@@ -235,16 +182,6 @@ int inaReadBusVoltage_V(LecaINA219* ina, float* destination);
 int inaReadBusVoltage_mV(LecaINA219* ina, float* destination);
 
 /*
-    Reads the power register. Data inside isn't processed and therefore is unimportant to the user.
-
-    @param ina Instance of LecaINA219 struct.
-    @param destination Address where the result will be stored.
-
-    @return Returns INA_SUCCESS or INA_FAILURE. 
-*/
-int inaReadPowerRegister(LecaINA219* ina, uint16_t* destination);
-
-/*
     Reads the power register and calculates power in watts.
 
     @param ina Instance of LecaINA219 struct.
@@ -265,16 +202,6 @@ int inaReadPower_W(LecaINA219* ina, float* destination);
 int inaReadPower_mW(LecaINA219* ina, float* destination);
 
 /*   
-    Reads the shunt voltage register. Data inside isn't processed and therefore is unimportant to the user.
-
-    @param ina Instance of LecaINA219 struct.
-    @param destination Address where the result will be stored.
-
-    @return Returns INA_SUCCESS or INA_FAILURE. 
-*/
-int inaReadShuntVoltageRegister(LecaINA219* ina, uint16_t* destination);
-
-/*   
     Reads the shunt voltage register and calculates shunt voltage in millivolts.
 
     @param ina Instance of LecaINA219 struct.
@@ -283,18 +210,6 @@ int inaReadShuntVoltageRegister(LecaINA219* ina, uint16_t* destination);
     @return Returns INA_SUCCESS or INA_FAILURE. 
 */
 int inaReadShuntVoltage_mV(LecaINA219* ina, float* destination);
-
-/*
-    Bit 0 - Get bus voltage (V)
-    Bit 1 - Get bus voltage (mV)
-    Bit 2 - Get current (A)
-    Bit 3 - Get current (mA)
-    Bit 4 - Get power (W)
-    Bit 5 - Get power (mW)
-    Bit 6 - Get shunt voltage (mV)
-    Bit 7 - Doesn't matter
-     
-*/
 
 /*
     Triggers the sensor to capture data specified by the *receipt* parameter.
@@ -324,27 +239,5 @@ int inaGetData(LecaINA219* ina, int receipt, DATAPACK* datapack);
     @return INA_SUCCESS or INA_FAILURE.
 */
 void printDatapack(DATAPACK* datapack);
-
-/*
-    Writes data to a register. Should not be used by the user.
-
-    @param ina Instance of LecaINA219 struct.
-    @param reg Register to write to. This setting has a REGISTER prefix.
-    @param value Value to write into the register.
-
-    @return Returns INA_SUCCESS or INA_FAILURE.
-*/
-int writeToRegister(LecaINA219* ina, uint8_t reg, uint16_t value);
-
-/*
-    Reads contents of a register. Should not be used by the user.
-
-    @param ina Instance of LecaINA219 struct.
-    @param reg Register to read from. This setting has a REGISTER prefix.
-    @param destination Address where the contents will be stored.
-
-    @return Returns INA_SUCCESS or INA_FAILURE.
-*/
-int readFromRegister(LecaINA219* ina, uint8_t reg, uint16_t* destination);
 
 #endif
