@@ -218,7 +218,7 @@ int inaReadShuntVoltage_mV(LecaINA219* ina, float* destination);
     @param receipt Binary number calculated by using the chart specified below.
     @param datapack Address of a datapack struct in which the data will be stored.
 
-    @param Bit0 Get bus voltage (V)\n
+    @param Bit0 Get bus voltage (V)
     @param Bit1 Get bus voltage (mV)
     @param Bit2 Get current (A)
     @param Bit3 Get current (mA)
