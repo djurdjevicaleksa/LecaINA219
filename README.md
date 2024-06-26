@@ -5,3 +5,6 @@ The library is built by running the `build.sh` script. It is built as a shared l
 
 # Example
 I provided an example program `test.c` to test the library.
+
+# Known errors
+Currently, shunt voltage reading is inaccurate.
